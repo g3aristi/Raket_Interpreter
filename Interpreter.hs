@@ -58,7 +58,10 @@ interpretPaddle (Just exprs) =
 data Expr = Number Integer |
             Boolean Bool |
             If Expr Expr Expr  | -- Here are the arithmetic, comparison, equality, and boolean operations
-            AddOp Expr Expr
+            AddOp Expr Expr |
+            SubOp Expr Expr |
+            MulOp Expr Expr | 
+            LtOp Expr Expr
 
 
 instance Show Expr where
@@ -84,6 +87,10 @@ parseExpr (Compound [Atom "+", LiteralInt a, LiteralInt b]) =
     AddOp (Number a) (Number b)
 parseExpr (Compound [Atom "-", LiteralInt a, LiteralInt b]) =
     SubOp (Number a) (Number b)
+parseExpr (Compound [Atom "*", LiteralInt a, LiteralInt b]) =
+    MulOp (Number a) (Number b)
+parseExpr (Compound [Atom "<", LiteralInt a, LiteralInt b]) =
+    LtOp (Number a) (Number b)
 
 
 -- ******************EVERY NEW FEATURE WILL CHANGE THIS FUNCTION ***************
@@ -97,10 +104,36 @@ evaluate (If cond x y) =
     case cond of
         Boolean True -> x
         Boolean False -> y
+-- Arithmetic operations [NOT  SURE ABOUT /, sqrt, log ...]
+-- Addition
 evaluate(AddOp a b) =
-    (lift (+0))(a)(b)
+    (addExpr (+0))(a)(b)
+-- Subtration
 evaluate(SubOp a b) =
-    (lift (+0))(a)(b)
+    (subExpr (+0))(a)(b)
+-- Multiplication
+evaluate(MulOp a b) =
+    (mulExpr (*1))(a)(b)
+-- Comparison operations (<)
+evaluate(LtOp a b) =
+    (ltExpr <)(a)(b)
 
-lift :: (Integer -> Integer) -> Expr -> Expr -> Expr
-lift f (Number x) (Number y) = Number (f (x + y))
+-- Equality operations (equals?)
+
+-- Boolean operations (not) [NOT SURE ABOUT ^ NAND ...]
+-- AND (&&)
+
+-- lift :: (Integer -> Integer) -> Expr -> Expr -> Expr
+-- lift f (Number x) (Number y) = Number (f (x + y))
+
+addExpr :: (Integer -> Integer) -> Expr -> Expr -> Expr
+addExpr f (Number x) (Number y) = Number (f (x + y))
+
+subExpr :: (Integer -> Integer) -> Expr -> Expr -> Expr
+subExpr f (Number x) (Number y) = Number (f ((x) - (y)))
+
+mulExpr :: (Integer -> Integer) -> Expr -> Expr -> Expr
+mulExpr f (Number x) (Number y) = Number (f (x * y))
+
+ltExpr :: (Bool -> Bool) -> Expr -> Expr -> Expr
+ltExpr f (Number x) (Number y) = Boolean (f (x < y))
