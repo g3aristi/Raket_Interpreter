@@ -58,11 +58,8 @@ interpretPaddle (Just exprs) =
 data Expr = Number Integer |
             Boolean Bool |
             If Expr Expr Expr  | -- Here are the arithmetic, comparison, equality, and boolean operations
-            AddOp Expr Expr |
-            SubOp Expr Expr |
-            MulOp Expr Expr | 
-            LtOp Expr Expr |
-            Not Expr
+            DuoExpr BaseExpr Expr Expr
+
 
 
 instance Show Expr where
@@ -85,17 +82,9 @@ parseExpr (LiteralBool b) = Boolean b
 parseExpr (Compound [Atom "if", b, x, y]) =
     If (parseExpr b) (parseExpr x) (parseExpr y)
 
-parseExpr (Compound [Atom "+", LiteralInt a, LiteralInt b]) =
-    AddOp (Number a) (Number b)
-parseExpr (Compound [Atom "-", LiteralInt a, LiteralInt b]) =
-    SubOp (Number a) (Number b)
-parseExpr (Compound [Atom "*", LiteralInt a, LiteralInt b]) =
-    MulOp (Number a) (Number b)
-parseExpr (Compound [Atom "<", LiteralInt a, LiteralInt b]) =
-    LtOp (Number a) (Number b)
-parseExpr (Compound [Atom "not", Expr a ]) =
-
-
+-- Parse any binary expression (an expression with two parameters)
+parseExpr (Compound [(Atom op), a, b]) =
+    DuoExpr (Atom op) (parseExpr a) (parseExpr b)
 
 -- ******************EVERY NEW FEATURE WILL CHANGE THIS FUNCTION ***************
 -- |Evaluate an AST by simplifying it into
@@ -108,37 +97,20 @@ evaluate (If cond x y) =
     case cond of
         Boolean True -> x
         Boolean False -> y
--- Arithmetic operations [NOT  SURE ABOUT /, sqrt, log ...]
--- Addition
-evaluate(AddOp a b) =
-    (addExpr (+) a b)
--- Subtration
-evaluate(SubOp a b) =
-    (subExpr (-) a b)
--- Multiplication
-evaluate(MulOp a b) =
-    (mulExpr (*) a b)
--- Comparison operations (<)
-evaluate(LtOp a b) =
-    (ltExpr (<) a b)
 
--- Equality operations (equals?)
-
--- Boolean operations (not) [NOT SURE ABOUT ^ NAND ...]
--- AND (&&)
-
--- lift :: (Integer -> Integer) -> Expr -> Expr -> Expr
--- lift f (Number x) (Number y) = Number (f (x + y))
-
-addExpr :: (Integer -> Integer -> Integer) -> Expr -> Expr -> Expr
-addExpr f (Number x) (Number y) = Number (f x y)
-
-subExpr :: (Integer -> Integer -> Integer) -> Expr -> Expr -> Expr
-subExpr f (Number x) (Number y) = Number (f x y)
-
-mulExpr :: (Integer -> Integer -> Integer) -> Expr -> Expr -> Expr
-mulExpr f (Number x) (Number y) = Number (f x y)
-
-ltExpr :: (Integer -> Integer -> Bool) -> Expr -> Expr -> Expr
---ltExpr :: Expr -> (Integer -> Integer) -> Expr -> Expr
-ltExpr f (Number x) (Number y) = Boolean (f x y)
+-- Evaluate all kinds of duo expression (expressions with two parameters)
+evaluate (DuoExpr (Atom op) (Number a) (Number b)) =
+    case op of
+        "+" -> (Number (a + b))
+        "*" -> (Number (a * b))
+        "<" -> (Boolean (a < b))
+        "equal?" -> (Boolean (a == b))
+evaluate (DuoExpr (Atom op) (Boolean a) (Boolean b)) =
+   case op of
+       "equal?" -> (Boolean (a == b))
+       "or" -> (Boolean (a || b))
+       "and" -> (Boolean (a && b))
+       
+-- Evaluate expresions that are not number of booleans
+evaluate (DuoExpr (Atom op) a b) = 
+    (evaluate (DuoExpr (Atom op) (evaluate a) (evaluate b)))
