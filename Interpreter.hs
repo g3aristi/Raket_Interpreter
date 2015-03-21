@@ -61,7 +61,8 @@ data Expr = Number Integer |
             AddOp Expr Expr |
             SubOp Expr Expr |
             MulOp Expr Expr | 
-            LtOp Expr Expr
+            LtOp Expr Expr |
+            Not Expr
 
 
 instance Show Expr where
@@ -83,6 +84,7 @@ parseExpr (LiteralInt n) = Number n
 parseExpr (LiteralBool b) = Boolean b
 parseExpr (Compound [Atom "if", b, x, y]) =
     If (parseExpr b) (parseExpr x) (parseExpr y)
+
 parseExpr (Compound [Atom "+", LiteralInt a, LiteralInt b]) =
     AddOp (Number a) (Number b)
 parseExpr (Compound [Atom "-", LiteralInt a, LiteralInt b]) =
@@ -91,6 +93,8 @@ parseExpr (Compound [Atom "*", LiteralInt a, LiteralInt b]) =
     MulOp (Number a) (Number b)
 parseExpr (Compound [Atom "<", LiteralInt a, LiteralInt b]) =
     LtOp (Number a) (Number b)
+parseExpr (Compound [Atom "not", Expr a ]) =
+
 
 
 -- ******************EVERY NEW FEATURE WILL CHANGE THIS FUNCTION ***************
@@ -107,16 +111,16 @@ evaluate (If cond x y) =
 -- Arithmetic operations [NOT  SURE ABOUT /, sqrt, log ...]
 -- Addition
 evaluate(AddOp a b) =
-    (addExpr (+0))(a)(b)
+    (addExpr (+) a b)
 -- Subtration
 evaluate(SubOp a b) =
-    (subExpr (+0))(a)(b)
+    (subExpr (-) a b)
 -- Multiplication
 evaluate(MulOp a b) =
-    (mulExpr (*1))(a)(b)
+    (mulExpr (*) a b)
 -- Comparison operations (<)
 evaluate(LtOp a b) =
-    (ltExpr <)(a)(b)
+    (ltExpr (<) a b)
 
 -- Equality operations (equals?)
 
@@ -126,14 +130,15 @@ evaluate(LtOp a b) =
 -- lift :: (Integer -> Integer) -> Expr -> Expr -> Expr
 -- lift f (Number x) (Number y) = Number (f (x + y))
 
-addExpr :: (Integer -> Integer) -> Expr -> Expr -> Expr
-addExpr f (Number x) (Number y) = Number (f (x + y))
+addExpr :: (Integer -> Integer -> Integer) -> Expr -> Expr -> Expr
+addExpr f (Number x) (Number y) = Number (f x y)
 
-subExpr :: (Integer -> Integer) -> Expr -> Expr -> Expr
-subExpr f (Number x) (Number y) = Number (f ((x) - (y)))
+subExpr :: (Integer -> Integer -> Integer) -> Expr -> Expr -> Expr
+subExpr f (Number x) (Number y) = Number (f x y)
 
-mulExpr :: (Integer -> Integer) -> Expr -> Expr -> Expr
-mulExpr f (Number x) (Number y) = Number (f (x * y))
+mulExpr :: (Integer -> Integer -> Integer) -> Expr -> Expr -> Expr
+mulExpr f (Number x) (Number y) = Number (f x y)
 
-ltExpr :: (Bool -> Bool) -> Expr -> Expr -> Expr
-ltExpr f (Number x) (Number y) = Boolean (f (x < y))
+ltExpr :: (Integer -> Integer -> Bool) -> Expr -> Expr -> Expr
+--ltExpr :: Expr -> (Integer -> Integer) -> Expr -> Expr
+ltExpr f (Number x) (Number y) = Boolean (f x y)
