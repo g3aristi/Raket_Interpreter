@@ -58,12 +58,10 @@ interpretPaddle (Just exprs) =
 data Expr = Number Integer |
             Boolean Bool |
             If Expr Expr Expr  | -- Here are the arithmetic, comparison, equality, and boolean operations
-            AddOp Expr Expr |
-            SubOp Expr Expr |
-            MulOp Expr Expr | 
-            LtOp Expr Expr |
-            Not Expr | 
-            List [Expr] 
+            BinaryOpp BaseExpr Expr Expr |
+            List [Expr] |
+            Not Expr 
+
 
 instance Show Expr where
     show (Number x) = show x
@@ -96,26 +94,19 @@ parseExpr (LiteralBool b) = Boolean b
 parseExpr (Compound [Atom "if", b, x, y]) =
     If (parseExpr b) (parseExpr x) (parseExpr y)
 
---addition function
-parseExpr (Compound [Atom "+", LiteralInt a, LiteralInt b]) =
-    AddOp (Number a) (Number b)
---subtraction function
-parseExpr (Compound [Atom "-", LiteralInt a, LiteralInt b]) =
-    SubOp (Number a) (Number b)
---multiply function
-parseExpr (Compound [Atom "*", LiteralInt a, LiteralInt b]) =
-    MulOp (Number a) (Number b)
---less than function
-parseExpr (Compound [Atom "<", LiteralInt a, LiteralInt b]) =
-    LtOp (Number a) (Number b)
---not function
-parseExpr (Compound [Atom "not", LiteralBool a]) =
-    Not (Boolean a)
 --list functions
 parseExpr (Atom "list") = 
     List []
 parseExpr (Compound ((Atom "list"):vals)) =
     List (map parseExpr vals)
+
+-- Parse binary oppeartions
+parseExpr (Compound [(Atom opperation), a, b]) =
+    BinaryOpp (Atom opperation) (parseExpr a) (parseExpr b)
+
+parseExpr (Compound [(Atom "not"), a]) =
+    Not(parseExpr a)
+
 
 -- ******************EVERY NEW FEATURE WILL CHANGE THIS FUNCTION ***************
 -- |Evaluate an AST by simplifying it into
@@ -128,45 +119,40 @@ evaluate (If cond x y) =
     case cond of
         Boolean True -> x
         Boolean False -> y
--- Arithmetic operations [NOT  SURE ABOUT /, sqrt, log ...]
--- Addition
-evaluate(AddOp a b) =
-    (addExpr (+) a b)
--- Subtration
-evaluate(SubOp a b) =
-    (subExpr (-) a b)
--- Multiplication
-evaluate(MulOp a b) =
-    (mulExpr (*) a b)
--- Comparison operations (<)
-evaluate(LtOp a b) =
-    (ltExpr (<) a b)
 
-evaluate(Not a) =
-    (notExpr (not) a)
+--binary opperations taking in 2 numbers
+evaluate (BinaryOpp (Atom "+") (Number a) (Number b)) =
+    (Number (a + b))
+evaluate (BinaryOpp (Atom "-") (Number a) (Number b)) =
+    (Number (a - b))
+evaluate (BinaryOpp (Atom "*") (Number a) (Number b)) =
+    (Number (a * b))
+evaluate (BinaryOpp (Atom "<") (Number a) (Number b)) =
+    (Boolean (a < b))
 
+--binary opperations taking in 2 bools
+evaluate (BinaryOpp (Atom "and") (Boolean a) (Boolean b)) =
+    (Boolean (a && b))
+evaluate (BinaryOpp (Atom "or") (Boolean a) (Boolean b)) =
+    (Boolean (a || b))
+evaluate (BinaryOpp (Atom "equals?") (Boolean a) (Boolean b)) =
+    (Boolean (a  == b))
+
+--not opperation taking in bool
+evaluate (Not (Boolean a)) =
+    (Boolean (not a))
+evaluate (Not a) = 
+    (evaluate (Not (evaluate a)))
+
+-- List
 evaluate(List a) =
     (List (map evaluate a))
--- Equality operations (equals?)
 
--- Boolean operations (not) [NOT SURE ABOUT ^ NAND ...]
--- AND (&&)
 
--- lift :: (Integer -> Integer) -> Expr -> Expr -> Expr
--- lift f (Number x) (Number y) = Number (f (x + y))
+--Case doesnt work, pretty sure we need to be able to check for
+--equivilency among lists
 
-addExpr :: (Integer -> Integer -> Integer) -> Expr -> Expr -> Expr
-addExpr f (Number x) (Number y) = Number (f x y)
+--evaluate (BinaryOpp (Atom "equals?") (List a) (List b)) = 
+--    (Boolean (a == b))
 
-subExpr :: (Integer -> Integer -> Integer) -> Expr -> Expr -> Expr
-subExpr f (Number x) (Number y) = Number (f x y)
-
-mulExpr :: (Integer -> Integer -> Integer) -> Expr -> Expr -> Expr
-mulExpr f (Number x) (Number y) = Number (f x y)
-
-ltExpr :: (Integer -> Integer -> Bool) -> Expr -> Expr -> Expr
-ltExpr f (Number x) (Number y) = Boolean (f x y)
-
-notExpr :: (Bool -> Bool) -> Expr -> Expr
-notExpr f (Boolean a) = Boolean (f a)
 
