@@ -62,8 +62,8 @@ data Expr = Number Integer |
             SubOp Expr Expr |
             MulOp Expr Expr | 
             LtOp Expr Expr |
-            Not Expr
-
+            Not Expr | 
+            List [Expr] 
 
 instance Show Expr where
     show (Number x) = show x
@@ -76,26 +76,46 @@ instance Show Expr where
         "(if " ++ show e1 ++ " " ++ show e2 ++ " " ++ show e3 ++ ")"
 
 
+    --Show lists
+    show (List []) = "'()"
+    show (List a) = (showList a "'(")
+
+    --Must comment on stuff
+    showList [] curr_lst = curr_lst
+    showList [a] curr_lst = curr_lst ++ show a ++ ")"
+    showList (aH:aT) curr_lst = showList aT (curr_lst ++ show aH ++ " ")
+
+
 -- ******************EVERY NEW FEATURE WILL CHANGE THIS FUNCTION ***************
 -- |Take a base tree produced by the starter code,
 --  and transform it into a proper AST.
 parseExpr :: BaseExpr -> Expr
 parseExpr (LiteralInt n) = Number n
 parseExpr (LiteralBool b) = Boolean b
+
 parseExpr (Compound [Atom "if", b, x, y]) =
     If (parseExpr b) (parseExpr x) (parseExpr y)
 
+--addition function
 parseExpr (Compound [Atom "+", LiteralInt a, LiteralInt b]) =
     AddOp (Number a) (Number b)
+--subtraction function
 parseExpr (Compound [Atom "-", LiteralInt a, LiteralInt b]) =
     SubOp (Number a) (Number b)
+--multiply function
 parseExpr (Compound [Atom "*", LiteralInt a, LiteralInt b]) =
     MulOp (Number a) (Number b)
+--less than function
 parseExpr (Compound [Atom "<", LiteralInt a, LiteralInt b]) =
     LtOp (Number a) (Number b)
-parseExpr (Compound [Atom "not", Expr a ]) =
-
-
+--not function
+parseExpr (Compound [Atom "not", LiteralBool a]) =
+    Not (Boolean a)
+--list functions
+parseExpr (Atom "list") = 
+    List []
+parseExpr (Compound ((Atom "list"):vals)) =
+    List (map parseExpr vals)
 
 -- ******************EVERY NEW FEATURE WILL CHANGE THIS FUNCTION ***************
 -- |Evaluate an AST by simplifying it into
@@ -122,6 +142,11 @@ evaluate(MulOp a b) =
 evaluate(LtOp a b) =
     (ltExpr (<) a b)
 
+evaluate(Not a) =
+    (notExpr (not) a)
+
+evaluate(List a) =
+    (List (map evaluate a))
 -- Equality operations (equals?)
 
 -- Boolean operations (not) [NOT SURE ABOUT ^ NAND ...]
@@ -140,5 +165,8 @@ mulExpr :: (Integer -> Integer -> Integer) -> Expr -> Expr -> Expr
 mulExpr f (Number x) (Number y) = Number (f x y)
 
 ltExpr :: (Integer -> Integer -> Bool) -> Expr -> Expr -> Expr
---ltExpr :: Expr -> (Integer -> Integer) -> Expr -> Expr
 ltExpr f (Number x) (Number y) = Boolean (f x y)
+
+notExpr :: (Bool -> Bool) -> Expr -> Expr
+notExpr f (Boolean a) = Boolean (f a)
+

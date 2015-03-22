@@ -13,3 +13,7 @@
 (< 3 5)
 (< 5 3)
 (not #f)
+(list 1 2 3)
+(list #t #f 1)
+(list #t (list 1 2) (list))
+(first (list 1 2 3 4 5 6 7 8 9 10))
