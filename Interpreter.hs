@@ -58,7 +58,8 @@ interpretPaddle (Just exprs) =
 data Expr = Number Integer |
             Boolean Bool |
             If Expr Expr Expr  | -- Here are the arithmetic, comparison, equality, and boolean operations
-            DuoExpr BaseExpr Expr Expr
+            DuoExpr BaseExpr Expr Expr |
+            Not Expr 
 
 
 
@@ -82,9 +83,17 @@ parseExpr (LiteralBool b) = Boolean b
 parseExpr (Compound [Atom "if", b, x, y]) =
     If (parseExpr b) (parseExpr x) (parseExpr y)
 
--- Parse any binary expression (an expression with two parameters)
+-- Duo expressions (an expression with two parameters)
 parseExpr (Compound [(Atom op), a, b]) =
     DuoExpr (Atom op) (parseExpr a) (parseExpr b)
+
+-- Not expressions
+parseExpr (Compound [Atom "not", a]) =
+    Not (parseExpr a)
+
+
+
+
 
 -- ******************EVERY NEW FEATURE WILL CHANGE THIS FUNCTION ***************
 -- |Evaluate an AST by simplifying it into
@@ -92,11 +101,16 @@ parseExpr (Compound [(Atom op), a, b]) =
 evaluate :: Expr -> Expr
 evaluate (Number n) = Number n
 evaluate (Boolean b) = Boolean b
--- The proble with if is that it is not recursive
-evaluate (If cond x y) =
+
+
+evaluate (If (Boolean cond) a b) =
     case cond of
-        Boolean True -> x
-        Boolean False -> y
+        True -> (evaluate a)
+        False -> (evaluate b)
+-- If Statement expression, and nested if statemts.
+evaluate (If cond a b) =
+    (evaluate (If (evaluate cond) a b))
+
 
 -- Evaluate all kinds of duo expression (expressions with two parameters)
 evaluate (DuoExpr (Atom op) (Number a) (Number b)) =
@@ -110,7 +124,11 @@ evaluate (DuoExpr (Atom op) (Boolean a) (Boolean b)) =
        "equal?" -> (Boolean (a == b))
        "or" -> (Boolean (a || b))
        "and" -> (Boolean (a && b))
-       
 -- Evaluate expresions that are not number of booleans
 evaluate (DuoExpr (Atom op) a b) = 
     (evaluate (DuoExpr (Atom op) (evaluate a) (evaluate b)))
+
+
+-- Not expressions
+evaluate (Not (Boolean a)) = (Boolean (not a))
+evaluate (Not a) = (evaluate (Not (evaluate a)))
