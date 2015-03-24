@@ -163,6 +163,7 @@ evaluate identifier (TwoArgExpr (Atom opStr) (Number x) (Number y)) =
     case opStr of
         "+" -> (identifier, (Number (x + y)))
         "*" -> (identifier, (Number (x * y)))
+        "<" -> (identifier, (Boolean (x < y)))
         "equal?" -> (identifier, (Boolean (x == y)))
 
 evaluate identifier (TwoArgExpr (Atom opStr) (Boolean x) (Boolean y)) =
@@ -186,6 +187,11 @@ evaluate identifier (Not x) =
 evaluate identifier (List vals) = 
     (identifier, (List (map (\x -> let (_, output) = (evaluate identifier x) in output) vals)))
 
+-- Evaluate a 'Cond'
+evaluate identifier (Cond exprs) = 
+    let (_, output) = (evaluate identifier (head (filter notNull exprs)))
+    in (identifier, output)
+
 evaluate identifier (Identifier name Null) =
     (identifier, (getIdentifier name identifier))
 evaluate identifier (Identifier name expr) =
@@ -194,11 +200,6 @@ evaluate identifier (Identifier name expr) =
 -- Evaluate an 'Error'
 evaluate identifier (Error errorType) =
     (identifier, (Error errorType))
-
--- Evaluate a 'Cond'
-evaluate identifier (Cond exprs) = 
-    let (_, output) = (evaluate identifier (head (filter notNull exprs)))
-    in (identifier, output)
 
 
 -- ********** HELPER FUNCTIONS **********
