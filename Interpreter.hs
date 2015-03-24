@@ -39,10 +39,10 @@ main =
 listExprs :: [Expr] -> [([Char], Expr)] -> [Expr]
 listExprs ast ids = 
     if ((length ast) == 1)
-        then let (_, output) = (evaluate ids (head ast))
-        in output:[]
-        else let (n_ids, output) = (evaluate ids (head ast))
-        in output:(listExprs (tail ast) n_ids)
+        then let (_, result) = (evaluate ids (head ast))
+        in result:[]
+        else let (n_ids, result) = (evaluate ids (head ast))
+        in result:(listExprs (tail ast) n_ids)
 
 -- |Take the output of the base parser and interpret it,
 --  first constructing the AST, then evaluating it,
@@ -71,9 +71,9 @@ data Expr = Number Integer |
             Null
 
 -- Helper for Show lists
-outputList [] init = init
-outputList [x] init = init ++ show x ++ ")"
-outputList (x:xs) init = outputList xs (init ++ show x ++ " ")
+resultList [] init = init
+resultList [x] init = init ++ show x ++ ")"
+resultList (x:xs) init = resultList xs (init ++ show x ++ " ")
 
 instance Show Expr where
     show (Number x) = show x
@@ -85,7 +85,7 @@ instance Show Expr where
     show (If e1 e2 e3) =
         "(if " ++ show e1 ++ " " ++ show e2 ++ " " ++ show e3 ++ ")"
     show (List []) = "'()"
-    show (List vals) = (outputList vals "(")
+    show (List vals) = (resultList vals "(")
     show (Identifier _ expr) = show expr
     show (Function _ _) = "#<procedure>"
     show (Error errType) = errType
@@ -136,8 +136,8 @@ parseExpr (Compound ((Atom "let*"):exprs)) =
     Number 1
 
 parseExpr (Compound [x, expr]) = 
-    let output = parseExpr x
-    in case output of
+    let result = parseExpr x
+    in case result of
            Boolean True -> parseExpr expr
            _ -> Null
     
@@ -149,51 +149,52 @@ evaluate ids (Number n) = (ids, (Number n))
 evaluate ids (Boolean b) = (ids, (Boolean b))
 
 -- If Statement with subexpression for all three parameters
-evaluate identifier (If (Boolean cond) x y) =
+evaluate identifier (If (Boolean cond) a b) =
     case cond of
-        True -> (evaluate identifier x)
-        False -> (evaluate identifier y)
+        True -> (evaluate identifier a)
+        False -> (evaluate identifier b)
 
-evaluate identifier (If cond x y) =
-    let (_, output) = (evaluate identifier cond)
-    in (evaluate identifier (If output x y))
+evaluate identifier (If cond a b) =
+    let (_, result) = (evaluate identifier cond)
+    in (evaluate identifier (If result a b))
 
 -- Evaluate some kind of binary expression
-evaluate identifier (TwoArgExpr (Atom opStr) (Number x) (Number y)) =
-    case opStr of
-        "+" -> (identifier, (Number (x + y)))
-        "*" -> (identifier, (Number (x * y)))
-        "<" -> (identifier, (Boolean (x < y)))
-        "equal?" -> (identifier, (Boolean (x == y)))
+evaluate identifier (TwoArgExpr (Atom op) (Number a) (Number b)) =
+    case op of
+        "+" -> (identifier, (Number (a + b)))
+        "*" -> (identifier, (Number (a * b)))
+        "<" -> (identifier, (Boolean (a < b)))
+        "equal?" -> (identifier, (Boolean (a == b)))
 
-evaluate identifier (TwoArgExpr (Atom opStr) (Boolean x) (Boolean y)) =
-   case opStr of
-       "and" -> (identifier, (Boolean (x && y)))
-       "or" -> (identifier, (Boolean (x || y)))
-       "equal?" -> (identifier, (Boolean (x == y)))
+evaluate identifier (TwoArgExpr (Atom op) (Boolean a) (Boolean b)) =
+   case op of
+       "and" -> (identifier, (Boolean (a && b)))
+       "or" -> (identifier, (Boolean (a || b)))
+       "equal?" -> (identifier, (Boolean (a == b)))
 
-evaluate identifier (TwoArgExpr (Atom opStr) x y) =
-    let (identX, outputX) = (evaluate identifier x)
-    in let (identY, outputY) = (evaluate identifier y)
-    in (evaluate identifier (TwoArgExpr (Atom opStr) outputX outputY))
+evaluate identifier (TwoArgExpr (Atom op) a b) =
+    let (identifier_a, result_a) = (evaluate identifier a)
+    in let (identifier_b, result_b) = (evaluate identifier b)
+    in (evaluate identifier (TwoArgExpr (Atom op) result_a result_b))
 
 -- Evaluate a 'not' expression
-evaluate identifier (Not (Boolean x)) = (identifier, (Boolean (not x)))
-evaluate identifier (Not x) = 
-    let (_, output) = (evaluate identifier x)
-    in (evaluate identifier (Not output))
+evaluate identifier (Not (Boolean a)) = (identifier, (Boolean (not a)))
+evaluate identifier (Not a) = 
+    let (_, result) = (evaluate identifier a)
+    in (evaluate identifier (Not result))
 
 -- Evaluate a 'list'
 evaluate identifier (List vals) = 
-    (identifier, (List (map (\x -> let (_, output) = (evaluate identifier x) in output) vals)))
+    (identifier, (List (map (\x -> let (_, result) = (evaluate identifier x) in result) vals)))
 
 -- Evaluate a 'Cond'
 evaluate identifier (Cond exprs) = 
-    let (_, output) = (evaluate identifier (head (filter notNull exprs)))
-    in (identifier, output)
+    let (_, result) = (evaluate identifier (head (filter notNull exprs)))
+    in (identifier, result)
 
 evaluate identifier (Identifier name Null) =
     (identifier, (getIdentifier name identifier))
+
 evaluate identifier (Identifier name expr) =
     ((name, expr):identifier, Null)
 
@@ -237,6 +238,7 @@ notNull expr =
 getMaybe (Just val) = val
 getMaybe (Nothing) = (Error "Syntax error")
 
--- Helper function that searches for an identifier and returns its corresponding value
+-- Helper that searches for an identifier
+-- returns its corresponding value
 getIdentifier :: [Char] -> [([Char], Expr)] -> Expr
 getIdentifier ident expr = (getMaybe (lookup ident expr))
