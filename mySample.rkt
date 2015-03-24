@@ -19,3 +19,6 @@
 (equal? 4 7)
 (not #f)
 (not (< 2 3))
+(list 1 2 3)
+(list #t #f #f)
+(list #t #f 3)
